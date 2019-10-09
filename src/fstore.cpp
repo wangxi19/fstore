@@ -62,6 +62,14 @@ bool FStore::Init(const std::string &iFStoreRootPath, uint64_t iPerFileSzBytes, 
     return true;
 }
 
+bool FStore::StoreData(const char *iData, uint64_t iDatalen, bool iCrossFile)
+{
+    //FStoreMetaData will be appended at each store file's tail
+    if (mCurFileFillSize + iDatalen > (mPerFileSzBytes - sizeof(FStoreMetaData))) {
+
+    }
+}
+
 bool FStore::PartitionFiles()
 {
     std::string tmFileName;
@@ -84,6 +92,8 @@ bool FStore::PartitionFiles()
             LOGERROR("Fail to close file descriptor: %s\n", tmFileName.c_str());
             return false;
         }
+
+        mFileEntryLst.push_back(tmFileName);
     }
 
     return true;
