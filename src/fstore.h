@@ -50,6 +50,17 @@ typedef bool (*PFNWriteRelDataCallBack) (const uint8_t* iData,
                                          void* iFStorePtr,
                                          void* iUserData);
 
+/*
+*                   Tips: brain storm
+*   for efficency, using double indices: a standalone index file and individual index in each store file
+*   meta data was written into index file firstly,
+*   and write it from index file to each store file as soon as store file status became STATUS_DONE.
+*   the advantages is: writing file offset will only be increased, it is good for protecting disk and improving writing speed
+*
+*   but the disadvantages is: the meta data will be written into each store file only the store file has finished writing.
+*   the updating of meta data isn't in real time.
+*/
+
 class FStore {
 public:
     explicit FStore();
@@ -89,13 +100,17 @@ public:
     bool PartitionFiles();
 
     //the iOfstFromMetaDta must less than sizeof(FStoreMetaData::userData)
-    void WriteUserData(const uint8_t* iUserData, uint8_t iSz, uint32_t iOfstFromUsrDta);//write in current store file
-    void WriteLastStorFileUserData(const uint8_t* iUserData, uint8_t iSz, uint32_t iOfstFromUsrDta);//write in last store file
+    bool WriteUserData(const uint8_t* iUserData, uint8_t iSz, uint32_t iOfstFromUsrDta);//write in current store file
+    bool WriteLastStorFileUserData(const uint8_t* iUserData, uint8_t iSz, uint32_t iOfstFromUsrDta);//write in last store file
     //can use WriteMetaData to write userdata, because userdata is following with metadata
     //the iOfstFromMetaDta must less than sizeof(FStoreMetaData)
-    void WriteMetaData(const uint8_t* iMetaData, uint8_t iSz, uint32_t iOfstFromMetaDta);//write in current store file
-    void WriteLastStorFileMetaData(const uint8_t* iMetaData, uint8_t iSz, uint32_t iOfstFromMetaDta);//write in last store file
+    bool WriteMetaData(const uint8_t* iMetaData, uint8_t iSz, uint32_t iOfstFromMetaDta);//write in current store file
+    bool WriteLastStorFileMetaData(const uint8_t* iMetaData, uint8_t iSz, uint32_t iOfstFromMetaDta);//write in last store file
 
+    const std::vector<FStoreMetaData>& fStorIndices() const;
+
+private:
+    bool __writeMetaData(const uint8_t* iMetaData, uint8_t iSz, uint32_t iOfstFromMetaDta, int fd);
 private:
     std::string mFStoreRootPath;
 
@@ -112,6 +127,7 @@ private:
     uint64_t mCurFileFillSize{0};
 
     PFNWriteRelDataCallBack mPfnWtRDCBK{nullptr};
+    std::vector<FStoreMetaData> mFStorIndices;
 };
 
 #endif //FSTORE_H

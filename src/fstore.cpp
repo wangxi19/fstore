@@ -109,23 +109,67 @@ bool FStore::PartitionFiles()
     return true;
 }
 
-void FStore::WriteUserData(const uint8_t *iUserData, uint8_t iSz, uint32_t iOfstFromUsrDta)
+bool FStore::WriteUserData(const uint8_t *iUserData, uint8_t iSz, uint32_t iOfstFromUsrDta)
 {
     (void)iUserData;
     (void)iSz;
 }
 
-void FStore::WriteLastStorFileUserData(const uint8_t *iUserData, uint8_t iSz, uint32_t iOfstFromUsrDta)
+bool FStore::WriteLastStorFileUserData(const uint8_t *iUserData, uint8_t iSz, uint32_t iOfstFromUsrDta)
 {
 
 }
 
-void FStore::WriteMetaData(const uint8_t *iMetaData, uint8_t iSz, uint32_t iOfstFromMetaDta)
+bool FStore::WriteMetaData(const uint8_t *iMetaData, uint8_t iSz, uint32_t iOfstFromMetaDta)
+{
+    if (!__writeMetaData(iMetaData, iSz, iOfstFromMetaDta, mCurStorFileFd)) {
+        LOGERROR("Fail to write metadata \n");
+        return false;
+    }
+    return true;
+}
+
+bool FStore::WriteLastStorFileMetaData(const uint8_t *iMetaData, uint8_t iSz, uint32_t iOfstFromMetaDta)
 {
 
 }
 
-void FStore::WriteLastStorFileMetaData(const uint8_t *iMetaData, uint8_t iSz, uint32_t iOfstFromMetaDta)
+const std::vector<FStoreMetaData> &FStore::fStorIndices() const
 {
+    return mFStorIndices;
+}
 
+bool FStore::__writeMetaData(const uint8_t *iMetaData, uint8_t iSz, uint32_t iOfstFromMetaDta, int fd)
+{
+    bool ret{false};
+    if (iSz == 0) {
+        ret = true;
+        goto end;
+    }
+
+    if (fd <= 0) {
+        LOGERROR("fd %d <= 0; fd is less than or equal to 0\n", fd)
+        goto end;
+    }
+
+    if (iSz + iOfstFromMetaDta > sizeof(FStoreMetaData)) {
+        LOGERROR("iSz + iOfstFromMetaDta %u >= sizeof(FStoreMetaData)\n", iOfstFromMetaDta)
+        goto end;
+    }
+
+    if (-1 == lseek(fd, - (int)sizeof(FStoreMetaData) - 1 +  (int)iOfstFromMetaDta, SEEK_END)) {
+        LOGERROR("Fail to lseek %d SEEK_END, errno %d\n", (- (int)sizeof(FStoreMetaData) - 1 +  (int)iOfstFromMetaDta), errno);
+        goto end;
+    }
+
+    if (iSz != write(fd, iMetaData, iSz)) {
+        LOGERROR("Fail to write %u bytes meta data to current store file, errno %d\n", iSz, errno);
+        goto end;
+    }
+
+    ret = true;
+
+    end:
+
+    return ret;
 }
