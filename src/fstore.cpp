@@ -49,7 +49,7 @@ bool FStore::Init(const std::string &iFStoreRootPath, uint64_t iPerFileSzBytes, 
 
 
     mPerFileSzBytes = iPerFileSzBytes;
-    mFileNumbers = iFileNumbers;
+    mFileQuantities = iFileNumbers;
     mFSBlockSz = (uint32_t) statBuf.st_blksize;
 
     auto remainder = mPerFileSzBytes % mFSBlockSz;
@@ -62,7 +62,17 @@ bool FStore::Init(const std::string &iFStoreRootPath, uint64_t iPerFileSzBytes, 
     return true;
 }
 
-bool FStore::StoreData(const char *iData, uint64_t iDatalen, bool iCrossFile)
+bool FStore::IsFirstWriting(uint64_t iLenToBeWritten, bool iCrossFiles)
+{
+
+}
+
+bool FStore::IsLastWriting(uint64_t iLenToBeWritten, bool iCrossFiles)
+{
+
+}
+
+bool FStore::WriteRelData(const uint8_t *iData, uint64_t iDatalen, bool iCrossFiles, PFNWriteRelDataCallBack iPfn)
 {
     //FStoreMetaData will be appended at each store file's tail
     if (mCurFileFillSize + iDatalen > (mPerFileSzBytes - sizeof(FStoreMetaData))) {
@@ -75,7 +85,7 @@ bool FStore::PartitionFiles()
     std::string tmFileName;
     FILE* fd{nullptr};
     int errNo{0};
-    for (uint32_t i = 0; i < mFileNumbers; i++) {
+    for (uint32_t i = 0; i < mFileQuantities; i++) {
         tmFileName = mFStoreRootPath + "/" + std::to_string(i) + ".fstor";
         fd = fopen(tmFileName.c_str(), "w+");
         if (fd == nullptr) {
@@ -99,8 +109,23 @@ bool FStore::PartitionFiles()
     return true;
 }
 
-void FStore::WriteUserData(const uint8_t *iUserData, uint8_t iSz)
+void FStore::WriteUserData(const uint8_t *iUserData, uint8_t iSz, uint32_t iOfstFromUsrDta)
 {
     (void)iUserData;
     (void)iSz;
+}
+
+void FStore::WriteLastStorFileUserData(const uint8_t *iUserData, uint8_t iSz, uint32_t iOfstFromUsrDta)
+{
+
+}
+
+void FStore::WriteMetaData(const uint8_t *iMetaData, uint8_t iSz, uint32_t iOfstFromMetaDta)
+{
+
+}
+
+void FStore::WriteLastStorFileMetaData(const uint8_t *iMetaData, uint8_t iSz, uint32_t iOfstFromMetaDta)
+{
+
 }
