@@ -11,6 +11,9 @@
 #define LOGERROR(fmt, args...) \
     fprintf(stderr,"[ERROR] %s %s:%d " fmt "\n", __FILE__, __FUNCTION__, __LINE__, ##args);
 
+#define LOGINFO(fmt, args...) \
+    fprintf(stderr,"[INFO] %s %s:%d " fmt "\n", __FILE__, __FUNCTION__, __LINE__, ##args);
+
 struct FStoreMetaData
 {
     enum STATUSENUM {
@@ -34,10 +37,11 @@ struct FStoreMetaData
     uint32_t changeTm{0};
     uint64_t useSz{0};//alias: writing sizes
     uint8_t status{0};
-    uint8_t userData[1000]{0, };
+#define FStoreMetaDataUserDataLen 1000
+    uint8_t userData[FStoreMetaDataUserDataLen]{0, };
 }__attribute__((packed));
 
-
+#define PFNWriteRelDataCallBackFLAG_NORMAL 0
 #define PFNWriteRelDataCallBackFLAG_BEFOR_FIRST 1
 #define PFNWriteRelDataCallBackFLAG_AFTER_FIRST 2
 #define PFNWriteRelDataCallBackFLAG_BEFOR_LAST 3
@@ -48,7 +52,7 @@ typedef bool (*PFNWriteRelDataCallBack) (const uint8_t* iData,
                                          bool iCrossFiles,
                                          uint8_t iFlag,
                                          void* iFStorePtr,
-                                         void* iUserData);
+                                         void* iContext);
 
 /*
 *                   Tips: brain storm
@@ -94,8 +98,12 @@ public:
      * if iCrossFile is true, iData can be stored in multiple files if it is necessary
      *
      * if iPfn is nullptr, then mPfnWtRDCBK is used
+     *
+     * Note: iDatalen must be less than mPerFileRelSpaceSzBytes
     */
-    bool WriteRelData(const uint8_t* iData, uint64_t iDatalen, bool iCrossFiles = false, PFNWriteRelDataCallBack iPfn = nullptr);
+    bool WriteRelData(const uint8_t* iData, uint64_t iDatalen, bool iCrossFiles = false,
+                      PFNWriteRelDataCallBack iPfn = nullptr,
+                      void* iPfnContext = nullptr);
 
     bool PartitionFiles();
 
@@ -109,25 +117,43 @@ public:
 
     const std::vector<FStoreMetaData>& fStorIndices() const;
 
+    //indices is matching to each of store file's index
+    bool ExistValidFS();
 private:
     bool __writeMetaData(const uint8_t* iMetaData, uint8_t iSz, uint32_t iOfstFromMetaDta, int fd);
+    bool __writeUserData(const uint8_t* iUserData, uint8_t iSz, uint32_t iOfstFromUsrDta, int fd);
+    bool useNextStoreFile();
+
+    /*
+    *
+    *  [0, mFileQuantities)
+    *  0 <= iFrom <= iTo < mFileQuantities
+    */
+    bool syncMemToIndices(int iFrom, int iTo);
+    bool syncIndicesToMem();
+
+    bool openIndices();
+    bool closeIndices();
 private:
     std::string mFStoreRootPath;
 
     //mPerFileSzBytes is aligned with FS(file system) block size(mFSBlockSz)
     uint64_t mPerFileSzBytes{0};
     uint32_t mFileQuantities{0};
+    uint64_t mStorFileRelSpaceSzBytes{0};
 
     uint32_t mFSBlockSz{0};
 
-    std::vector<std::string> mFileEntryLst;
-    std::string mCurFileName;
-    int mCurStorFileFd{0};
-    int mLastStorFileFd{0};
+    std::vector<std::string> mStorFileEntryLst;
+    int mCurFileNo{-1};
+    int mCurStorFileFd{-1};
+    int mLastStorFileFd{-1};
     uint64_t mCurFileFillSize{0};
+    uint64_t mLastFileFillSize{0};
 
     PFNWriteRelDataCallBack mPfnWtRDCBK{nullptr};
     std::vector<FStoreMetaData> mFStorIndices;
+    int mIndicesFd{-1};
 };
 
 #endif //FSTORE_H
